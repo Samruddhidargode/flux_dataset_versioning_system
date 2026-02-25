@@ -1,0 +1,31 @@
+{
+  "pipeline": [
+    {
+      "step": "lowercase"
+    },
+    {
+      "step": "tokenize",
+      "params": {
+        "method": "regex"
+      }
+    },
+    {
+      "step": "remove_stopwords",
+      "params": {
+        "language": "english"
+      }
+    },
+    {
+      "step": "filter_by_length",
+      "params": {
+        "min_tokens": 3
+      }
+    },
+    {
+      "step": "deduplicate",
+      "params": {
+        "keep": "first"
+      }
+    }
+  ]
+}

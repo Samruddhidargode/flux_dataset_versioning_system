@@ -1,0 +1,13 @@
+{
+  "pipeline": [
+    {
+      "step": "lowercase"
+    },
+    {
+      "step": "remove_stopwords",
+      "params": {
+        "language": "english"
+      }
+    }
+  ]
+}
