@@ -209,6 +209,24 @@ python -m flux export v1-raw ./backups
 python -m flux import backups/v1-raw.tar.gz
 ```
 
+### 9. Web Dashboard
+
+```bash
+python -m flux.web.app
+```
+
+Opens a browser dashboard at `http://127.0.0.1:5000` with:
+
+- **Version Lineage Graph** — visual timeline of all versions with tags, sample counts, and pipeline info
+- **Version Detail Page** — full metrics, hashes, pipeline steps, config JSON, and data preview table
+- **Compare Page** — select any two versions, see color-coded config diff, metric deltas with % change, and Jaccard similarity bar
+- **REST API** — `/api/versions` and `/api/compare?v1=...&v2=...` for programmatic access
+
+```bash
+# Custom port and repo path
+python -m flux.web.app --port 8080 --repo /path/to/repo
+```
+
 ---
 
 ## Preprocessing Pipeline
@@ -330,6 +348,9 @@ flux/
 ├── cli/
 │   ├── main.py              # CLI entry point with all commands
 │   └── interactive.py       # Interactive prompts & pipeline builder
+├── web/
+│   ├── app.py               # Flask web dashboard & REST API
+│   └── templates/           # HTML templates (index, version, compare)
 └── utils/
     └── file_utils.py        # File I/O helpers
 
