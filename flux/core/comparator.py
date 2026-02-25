@@ -72,6 +72,44 @@ def compare_versions(
     return report.to_string()
 
 
+def compare_versions_raw(
+    v1: str,
+    v2: str,
+    repo_path: Union[str, Path],
+) -> ComparisonReport:
+    """Compare two versions and return the raw ComparisonReport object.
+
+    Same as compare_versions but returns the structured object
+    instead of a formatted string.
+    """
+    repo_path = Path(repo_path).resolve()
+    _validate_repo(repo_path)
+
+    v1_hash = resolve_version(v1, repo_path)
+    v2_hash = resolve_version(v2, repo_path)
+
+    v1_dir = repo_path / "versions" / v1_hash
+    v2_dir = repo_path / "versions" / v2_hash
+
+    v1_config = read_json(v1_dir / "config.json") if (v1_dir / "config.json").exists() else {}
+    v2_config = read_json(v2_dir / "config.json") if (v2_dir / "config.json").exists() else {}
+
+    v1_meta = read_json(v1_dir / "metadata.json") if (v1_dir / "metadata.json").exists() else {}
+    v2_meta = read_json(v2_dir / "metadata.json") if (v2_dir / "metadata.json").exists() else {}
+
+    config_diff = _compute_config_diff(v1_config, v2_config)
+    metrics_diff = _compute_metrics_diff(v1_meta, v2_meta)
+    data_overlap = _compute_data_overlap(v1_hash, v2_hash, repo_path)
+
+    return ComparisonReport(
+        v1_hash=v1_hash,
+        v2_hash=v2_hash,
+        config_diff=config_diff,
+        metrics_diff=metrics_diff,
+        data_overlap=data_overlap,
+    )
+
+
 def _compute_config_diff(config1: Dict[str, Any], config2: Dict[str, Any]) -> str:
     """Compute a textual diff between two config dictionaries.
 

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FLUX — Dataset Versioning Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #21262d;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-dim: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --orange: #d29922;
+            --red: #f85149;
+            --purple: #bc8cff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* ---- Navbar ---- */
+        .navbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .navbar .logo {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--accent);
+        }
+        .navbar .logo span { color: var(--text-dim); font-weight: 400; font-size: 13px; letter-spacing: 0; margin-left: 12px; }
+        .navbar nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            margin-left: 24px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .navbar nav a:hover, .navbar nav a.active { color: var(--accent); }
+
+        /* ---- Container ---- */
+        .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ---- Stats Row ---- */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card .value { font-size: 32px; font-weight: 700; color: var(--accent); }
+        .stat-card .label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+        /* ---- Section ---- */
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+        /* ---- Lineage Graph ---- */
+        .lineage-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+            overflow-x: auto;
+        }
+        .lineage-timeline {
+            display: flex;
+            align-items: flex-start;
+            gap: 0;
+            min-width: max-content;
+            padding: 16px 0;
+        }
+        .lineage-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 180px;
+            position: relative;
+        }
+        .lineage-node .node-circle {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: var(--bg);
+            z-index: 2;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .lineage-node .node-circle:hover {
+            transform: scale(1.15);
+            box-shadow: 0 0 16px rgba(88, 166, 255, 0.4);
+        }
+        .lineage-node .node-connector {
+            position: absolute;
+            top: 20px;
+            left: calc(50% + 20px);
+            width: calc(100% - 40px);
+            height: 2px;
+            background: var(--border);
+            z-index: 1;
+        }
+        .lineage-node:last-child .node-connector { display: none; }
+        .lineage-node .node-info {
+            margin-top: 12px;
+            text-align: center;
+        }
+        .lineage-node .node-hash {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            color: var(--accent);
+            cursor: pointer;
+        }
+        .lineage-node .node-hash:hover { text-decoration: underline; }
+        .lineage-node .node-tag {
+            display: inline-block;
+            background: var(--green);
+            color: var(--bg);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin: 4px 2px;
+        }
+        .lineage-node .node-meta {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        .lineage-node .node-samples {
+            font-size: 12px;
+            color: var(--text);
+            margin-top: 2px;
+        }
+        .lineage-node .node-pipeline {
+            font-size: 11px;
+            color: var(--purple);
+            margin-top: 2px;
+        }
+
+        /* ---- Same-data indicator ---- */
+        .same-data-badge {
+            display: inline-block;
+            background: var(--orange);
+            color: var(--bg);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 8px;
+            margin-top: 4px;
+        }
+
+        /* ---- Table ---- */
+        .table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: var(--surface2); }
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 12px 16px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--surface2); }
+        .hash-link {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .hash-link:hover { text-decoration: underline; }
+        .tag-badge {
+            display: inline-block;
+            background: var(--green);
+            color: var(--bg);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-right: 4px;
+        }
+
+        /* ---- Footer ---- */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-dim);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 48px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="logo">FLUX <span>Dataset Versioning Dashboard</span></div>
+        <nav>
+            <a href="/" class="active">Dashboard</a>
+            <a href="/compare">Compare</a>
+        </nav>
+    </div>
+
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="value">{{ versions | length }}</div>
+                <div class="label">Total Versions</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ tags | length }}</div>
+                <div class="label">Tags</div>
+            </div>
+            <div class="stat-card">
+                {% set unique_raw = versions | map(attribute='raw_hash') | list | unique | list %}
+                <div class="value">{{ unique_raw | length }}</div>
+                <div class="label">Unique Datasets</div>
+            </div>
+            <div class="stat-card">
+                {% if versions %}
+                <div class="value">{{ versions[-1].samples }}</div>
+                {% else %}
+                <div class="value">0</div>
+                {% endif %}
+                <div class="label">Latest Version Samples</div>
+            </div>
+        </div>
+
+        <!-- Lineage Graph -->
+        <div class="section-title"><div class="dot"></div> Version Lineage</div>
+        <div class="lineage-container">
+            {% if versions %}
+            <div class="lineage-timeline">
+                {% for v in versions %}
+                <div class="lineage-node">
+                    <a href="/version/{{ v.hash }}" style="text-decoration:none;">
+                        <div class="node-circle">V{{ loop.index }}</div>
+                    </a>
+                    {% if not loop.last %}
+                    <div class="node-connector"></div>
+                    {% endif %}
+                    <div class="node-info">
+                        <a href="/version/{{ v.hash }}" class="node-hash">{{ v.short_hash }}</a>
+                        <div>
+                            {% for tag in v.tags %}
+                            <span class="node-tag">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="node-samples">{{ v.samples }} samples</div>
+                        <div class="node-pipeline">{{ v.pipeline_steps }} pipeline step{{ 's' if v.pipeline_steps != 1 else '' }}</div>
+                        <div class="node-meta">{{ v.created[:10] }}</div>
+                        {% if v.raw_hash == versions[0].raw_hash and loop.index > 1 %}
+                        <span class="same-data-badge">same source</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color: var(--text-dim); text-align: center; padding: 24px;">
+                No versions yet. Upload a dataset with <code style="color:var(--accent)">flux upload data.csv</code>
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Versions Table -->
+        <div class="section-title"><div class="dot"></div> All Versions</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Version Hash</th>
+                        <th>Tags</th>
+                        <th>Samples</th>
+                        <th>Vocab</th>
+                        <th>Avg Len</th>
+                        <th>Pipeline</th>
+                        <th>Created By</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in versions %}
+                    <tr>
+                        <td style="color: var(--text-dim);">{{ loop.index }}</td>
+                        <td><a href="/version/{{ v.hash }}" class="hash-link">{{ v.short_hash }}</a></td>
+                        <td>
+                            {% for tag in v.tags %}
+                            <span class="tag-badge">{{ tag }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ v.samples }}</td>
+                        <td>{{ v.vocab }}</td>
+                        <td>{{ v.avg_len }}</td>
+                        <td style="color: var(--purple);">{{ v.pipeline_steps }} step{{ 's' if v.pipeline_steps != 1 else '' }}</td>
+                        <td style="color: var(--text-dim);">{{ v.created_by }}</td>
+                        <td style="color: var(--text-dim); font-size: 12px;">{{ v.created[:10] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer">
+        FLUX — File-based Lightweight Universal Xplainable Dataset Versioning System
+    </div>
+</body>
+</html>
